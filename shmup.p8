@@ -49,68 +49,85 @@ function _draw()
 	end
 end
 
-
-
 function startgame()
 	mode = "ready"
-	shipx = 62 --ship initial position
-	shipy = 110
-	shipsx = 0 --ship initial speed
-	shipsy = 0
-	bulx = -1 --bullet initial position
-	buly = -1
-	bulsprite = 16 --bullet initial sprite
+
+	ship = {}
+		ship.x = 62 --x pos
+		ship.y = 110 -- y pos
+		ship.sx = 0 -- speed x axis
+		ship.sy = 0 --speed y axis
+		ship.spr = 4 --sprite
+		ship.flm = 32 --engine flame
+
+
 	bombsprite = 28 --bomb initial sprite
-	shipsprite = 4 --ship initial sprite
-	shipflame = 32 -- engine initial sprite
 	muzzle = 0 -- muzzle flash initial value
 	lives = 4
 	score ="-score: "..10000 .."-"
-	starx = {}
-	stary = {}
-	starspd = {}
+
+	stars = {}
 	for i = 1,100 do
-		add(starx,flr(rnd(128)))
-		add(stary,flr(rnd(128)))
-		add(starspd,rnd(2)+0.5)
+		local newstar = {}
+		newstar.x = flr(rnd(128))
+		newstar.y = flr(rnd(128))
+		newstar.spd = rnd(2)+0.5
+		add(stars,newstar)
 	end
+	
+	buls = {}
+	enemies = {}
+	local myen = {}
+		myen.x = 60
+		myen.y = 5
+		myen.spr = 50
+		add(enemies, myen)
 end
 
 -->8
 --tools
 function starfield()
-	for i = 1,#starx do
-		local scol =6
-		if starspd[i] >= 2.4 then
+	for i = 1,#stars do
+		local mystar = stars[i]
+		local scol = 6
+		if mystar.spd >= 2.4 then
 			scol = 13
-			line(starx[i],stary[i],starx[i],stary[i]+2,scol)
-		elseif starspd[i] > 1.5 then
+			line(mystar.x,mystar.y,mystar.x,mystar.y+2,scol)
+		elseif mystar.spd > 1.5 then
 			scol = 13
-			pset(starx[i],stary[i],scol)	
-		elseif starspd[i] > 0.5 then
+			pset(mystar.x,mystar.y,scol)	
+		elseif mystar.spd > 0.5 then
 			scol = 1
-			pset(starx[i],stary[i],scol)
+			pset(mystar.x,mystar.y,scol)
 		end
 	end
 end
 
 function animatestars()
-	for i = 1,#stary do
-		local sy = stary[i]
-		sy += starspd[i]
-		if sy > 128 then
-			sy = sy - 128
+	for i = 1,#stars do
+		local mystar=stars[i]
+		mystar.y = mystar.y + mystar.spd
+		if mystar.y > 128 then
+			mystar.y = mystar.y - 128
 		end
-		stary[i] = sy
-	end
+	end	
 end
-
+	
 function blink()
 	local banim = {5,5,6,6,6,6,7,7,7,7,6,6,6,6,5,5}
 	if blinkt > #banim then
 		blinkt = 1
 	end
 	return banim[blinkt]
+end
+
+--[[
+Creating a "meta function"
+that creates functions that
+draw sprites
+]]
+function drawsprites(myspr)
+	spr(myspr.spr,myspr.x,myspr.y)
 end
 
 -->8
@@ -127,9 +144,9 @@ function update_game()
 	speed to 0 each frame, 
 	so ship can stop moving 
 	if we stop pressing.]]
-	shipsx = 0
-	shipsy = 0
-	shipsprite = 4
+	ship.sx = 0
+	ship.sy = 0
+	ship.spr = 4
 
 	--[[controls
 	  steering	
@@ -137,29 +154,32 @@ function update_game()
 	   ship position and sprite 
 	   according to which button we press]]
 	if btn(0) then
-		shipsx = -2
-		while shipsprite != 1 do
-			shipsprite -= 1
+		ship.sx = -2
+		while ship.spr != 1 do
+			ship.spr -= 1
 		end
 	elseif btn(1) then
-		shipsx = 2
-		while shipsprite != 7 do
-			shipsprite += 1
+		ship.sx = 2
+		while ship.spr != 7 do
+			ship.spr += 1
 		end
 	end
 
  	if btn(2) then
-  		shipsy = -2
+  		ship.sy = -2
  	elseif btn(3) then
-  		shipsy = 2
+  		ship.sy = 2
 	end
 	--[[firing and switching guns
 	 in this section, we control
 	 the position of the bullet and the 
 	 position of the muzzle flash]] 
 	if btnp(5) then
-		bulx = shipx
-		buly = shipy - 5
+		local mybul = {}
+		mybul.x = ship.x
+		mybul.y = ship.y - 5
+		mybul.spr = 16
+		add(buls,mybul)
 		--sfx(bulsprite - 16)
 		sfx(0)
 		muzzle = 5
@@ -176,42 +196,67 @@ function update_game()
 	--	end
 	--end
 	--collision detection
-	if shipx > 120 then
-		shipx = 120
+	if ship.x > 120 then
+		ship.x = 120
 		end
-	if shipx < 0 then
-		shipx = 0 
+	if ship.x < 0 then
+		ship.x = 0 
 		end
-	if shipy > 120 then
-		shipy = 120
+	if ship.y > 120 then
+		ship.y = 120
 		end
-	if shipy < 0 then
-		shipy = 0 
+	if ship.y < 0 then
+		ship.y = 0 
 		end
 
 
 	--moving the ship
 	 --ship position = position + speed
-	shipx = shipx + shipsx
- 	shipy = shipy + shipsy
+	ship.x += ship.sx
+ 	ship.y += ship.sy
 
-	--moving the bullet
-	buly -= 4
+	--moving / animating the bullets
+	for mybul in all(buls) do
+		mybul.y -= 4
+		mybul.spr += 0.7
+		if mybul.spr >= 20 then
+			mybul.spr = 16
+		end
+		if mybul.y < -8 then
+			del (buls,mybul)
+		end
+	end
+	
+	--moving / animating the enemies
+
+	--[[ basic for loop
+		for i = #enemies,1,-1 do
+		local myen = enemies[i]
+
+		more streamlined for loop
+		local variable already created
+		in the statement.
+		better used when looping objects
+		]]
+	for myen in all(enemies) do
+		myen.y += 1
+		myen.spr +=0.4
+		if myen. spr >= 55 then
+			myen.spr = 50
+		end
+		if myen.y > 128 then
+			del (enemies,myen)
+		end
+	end
 
 	--animate rear flame
-	shipflame += 1
-	if shipflame > 35 then
-		shipflame = 32
+	ship.flm += 1
+	if ship.flm > 35 then
+		ship.flm = 32
 	end
 	--animate muzzle flash
 	if muzzle > 0 then
 		muzzle -= 2
-	end
-
-	--animate the bullet
-	bulsprite += 1
-	if bulsprite > 19 then
-		bulsprite = 16
 	end
 	
 	--[[animate the bomb icon
@@ -254,11 +299,22 @@ function draw_game()
 	--this draw the ship
 	cls(0)
 	starfield()
-	spr(shipsprite,shipx,shipy)
-	spr(shipflame,shipx,shipy + 10)
-	spr(bulsprite,bulx,buly)
+	drawsprites(ship)
+	spr(ship.flm,ship.x,ship.y + 10)
+	
+	--this draws the enemies
+	for myen in all(enemies) do
+		drawsprites(myen)
+	end
+	
+	--this draws the bullets
+	for mybul in all(buls)do
+		drawsprites(mybul)
+	end
+
+	--this draws the muzzle flash
 	if muzzle > 0 then	 
-	circfill(shipx+4,shipy-2,muzzle,7)
+	circfill(ship.x+4,ship.y-2,muzzle,7)
 	end
 	print(score,40,1,12)
 	spr(bombsprite+1,110,1)
@@ -310,14 +366,14 @@ __gfx__
 000cc000000000000000000000000000000cc0000080080000888800000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000008800000088000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00333300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-003bb300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-03bbbb30000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-03888830000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-03b55b30000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-03b55b30000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-093bb390000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00333300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00333300000000003300003333000033330000333300003333000033000000000000000000000000000000000000000000000000000000000000000000000000
+003bb30000000000b339933bb339933bb339933bb339933bb339933b000000000000000000000000000000000000000000000000000000000000000000000000
+03bbbb3000000000b330033bb330033bb330033bb330033bb330033b000000000000000000000000000000000000000000000000000000000000000000000000
+03888830000000000b3333b00b3333b00b3333b00b3333b00b3333b0000000000000000000000000000000000000000000000000000000000000000000000000
+03b55b30000000000b3873b00b3773b00b3773b00b3783b00b3873b0000000000000000000000000000000000000000000000000000000000000000000000000
+03b55b30000000000b0770b00b0870b00b0780b00b0770b00b0770b0000000000000000000000000000000000000000000000000000000000000000000000000
+093bb3900000000000b00b0000b00b00b000000b00b00b0000b00b00000000000000000000000000000000000000000000000000000000000000000000000000
+003333000000000000b00b0000000000b000000b0000000000b00b00000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
